@@ -12,6 +12,14 @@ func (a *Application) AddTagHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if tag.ID == "" || tag.Hash == "" {
+		http.Error(w, "ID and hash is required", http.StatusBadRequest)
+		return
+	}
+	if tag.Created == 0 {
+		tag.Created = int(time.Now().Unix())
+	}
 	a.AddTag(tag)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Tag added"))
@@ -80,4 +88,11 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(tag)
 	}
+}
+
+func (a *Application) AccessHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	a.Memory.RLock()
+	defer a.Memory.RUnlock()
+	json.NewEncoder(w).Encode(a.AccessLogs)
 }
