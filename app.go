@@ -1,10 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
+)
+
+var (
+	dbLocation = flag.String("db", "DSN", "Database location")
 )
 
 type Application struct {
