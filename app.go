@@ -45,7 +45,8 @@ func NewApplication(fqdn string, db Database) *Application {
 		if tag.URL == "" {
 			tag.URL = fmt.Sprintf("%s/%s", app.FQDN, tag.ID)
 		}
-		app.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.URL), app.tagHandler(tag))
+		fmt.Println(tag.URL, tag.ID)
+		app.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.ID), app.tagHandler(tag))
 	}
 	// app.Gateway.HandleFunc("/tag", app.TagHandler)
 	app.Gateway.HandleFunc("/tag-exists", app.TagExistsHandler)
@@ -59,16 +60,21 @@ func (a *Application) AddTag(tag *Tag) {
 	a.Memory.Lock()
 	defer a.Memory.Unlock()
 	myTag, ok := a.Tags[tag.ID]
+	// not in memory
 	if !ok {
 		tagFromDB, err := a.DB.GetTag(tag.ID)
+		// not in db, this tag is new and its safe to add a new route
 		if err != nil {
 			fmt.Println("adding tag")
+			tag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
+			a.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.ID), a.tagHandler(tag))
 		}
+		// err is nil, tag is in db
 		if tagFromDB != nil {
 			tag.History = append(tag.History, tagFromDB.History...)
 		}
-		tag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
-		a.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.URL), a.tagHandler(tag))
+		tag.History = append(tag.History, TagHistoryItem{ClientID: tag.ID, Hash: tag.Hash, Created: tag.Created})
+		// store in memory
 		a.Tags[tag.ID] = tag
 		if err := a.DB.InsertTag(tag); err != nil {
 			fmt.Println("error inserting tag", err)
@@ -81,7 +87,7 @@ func (a *Application) AddTag(tag *Tag) {
 	if myTag.URL == "" {
 		myTag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
 	}
-	a.Gateway.HandleFunc(fmt.Sprintf("/%s", myTag.URL), a.tagHandler(myTag))
+	// a.Gateway.HandleFunc(fmt.Sprintf("/%s", myTag.URL), a.tagHandler(myTag)) // this should exist already
 	if err := a.DB.InsertTag(myTag); err != nil {
 		fmt.Println("error inserting tag", err)
 	}

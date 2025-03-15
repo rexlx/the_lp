@@ -3,7 +3,7 @@ package main
 import "sync"
 
 type Tag struct {
-	Memory   *sync.RWMutex    `json:"-"`
+	FilePath string           `json:"file_path"`
 	ID       string           `json:"id"`
 	ClientID string           `json:"client_id"`
 	Hash     string           `json:"hash"`
@@ -11,6 +11,7 @@ type Tag struct {
 	Created  int              `json:"created"`
 	History  []TagHistoryItem `json:"history"`
 	Access   []TagAccess      `json:"access"`
+	Memory   *sync.RWMutex    `json:"-"`
 }
 
 type TagAccess struct {

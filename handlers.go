@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 )
 
 func (a *Application) AddTagHandler(w http.ResponseWriter, r *http.Request) {
+	out := `<w:instrText xml:space="preserve"> INCLUDEPICTURE \d "%v" \* MERGEFORMATINET </w:instrText>`
 	tag := &Tag{}
 	if err := json.NewDecoder(r.Body).Decode(tag); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -21,8 +23,14 @@ func (a *Application) AddTagHandler(w http.ResponseWriter, r *http.Request) {
 		tag.Created = int(time.Now().Unix())
 	}
 	a.AddTag(tag)
+	if tag.URL == "" {
+		tag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
+	}
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Tag added"))
+	res := make(map[string]string)
+	res["data"] = fmt.Sprintf(out, tag.URL)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
 }
 
 type TagQuery struct {
@@ -66,13 +74,13 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 			remoteIP = r.RemoteAddr
 		}
 		userAgent := r.Header.Get("User-Agent")
-		tag.Memory.Lock()
+		// tag.Memory.Lock()
 		tag.Access = append(tag.Access, TagAccess{
 			IP:        remoteIP,
 			UserAgent: userAgent,
 			Timestamp: int(time.Now().Unix()),
 		})
-		tag.Memory.Unlock()
+		// tag.Memory.Unlock()
 		a.Memory.Lock()
 		a.AccessLogs = append(a.AccessLogs, AccessLog{
 			IP:        remoteIP,
