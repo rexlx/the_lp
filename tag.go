@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 type Tag struct {
 	FilePath string           `json:"file_path"`
@@ -42,6 +45,7 @@ func (t *Tag) AddHistory(clientID, hash string, created int) {
 	// t.Memory.Lock()
 	// defer t.Memory.Unlock()
 	if len(t.History) > 149 {
+		log.Printf("tag %s history is full, removing oldest item", t.ID)
 		t.History = t.History[1:]
 	}
 	t.History = append(t.History, TagHistoryItem{
@@ -55,6 +59,7 @@ func (t *Tag) AddAccess(ip, userAgent string, timestamp int) {
 	// t.Memory.Lock()
 	// defer t.Memory.Unlock()
 	if len(t.Access) > 149 {
+		log.Printf("tag %s access is full, removing oldest item", t.ID)
 		t.Access = t.Access[1:]
 	}
 	t.Access = append(t.Access, TagAccess{

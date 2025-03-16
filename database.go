@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -114,20 +115,39 @@ func (p *PostgresDB) DeleteTag(id string) error {
 
 func (p *PostgresDB) AddAccessLog(log *AccessLog) error {
 	currentTime := time.Now()
-	month := currentTime.Format("Jan")
-	month = strings.ToLower(month)
+	month := strings.ToLower(currentTime.Format("Jan"))
 	year := currentTime.Format("2006")
-	_, err := p.Pool.Exec(context.Background(), `
-		create table if not exists access_logs_%s_%s (
-			id serial primary key,
-			ip text,
-			user_agent text,
-			timestamp int
-		);
-		insert into access_logs_%s_%s (ip, user_agent, timestamp, tag_id)
-		values ($1, $2, $3, $4)
-	`, month, year, month, year, log.IP, log.UserAgent, log.Timestamp, log.TagID)
-	return err
+	tableName := fmt.Sprintf("access_logs_%s_%s", month, year)
+
+	// First, create the table if it doesn't exist
+	createQuery := fmt.Sprintf(`
+        CREATE TABLE IF NOT EXISTS %s (
+            id SERIAL PRIMARY KEY,
+            ip TEXT,
+            user_agent TEXT,
+            timestamp INT,
+            tag_id TEXT
+        )`, tableName)
+	_, err := p.Pool.Exec(context.Background(), createQuery)
+	if err != nil {
+		return fmt.Errorf("failed to create table: %v", err)
+	}
+
+	// Then, insert the data
+	insertQuery := fmt.Sprintf(`
+        INSERT INTO %s (ip, user_agent, timestamp, tag_id)
+        VALUES ($1, $2, $3, $4)`, tableName)
+	_, err = p.Pool.Exec(context.Background(), insertQuery,
+		log.IP,
+		log.UserAgent,
+		log.Timestamp,
+		log.TagID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to insert log: %v", err)
+	}
+
+	return nil
 }
 
 func (p *PostgresDB) GetAccessLogs(table string) ([]*AccessLog, error) {
@@ -136,6 +156,7 @@ func (p *PostgresDB) GetAccessLogs(table string) ([]*AccessLog, error) {
 		FROM access_logs_%s
 	`, table)
 	if err != nil {
+		log.Println("GetAccessLogs error getting access logs", err)
 		return nil, err
 	}
 	defer rows.Close()

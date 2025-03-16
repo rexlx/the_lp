@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	dbLocation = flag.String("db", "DSN", "Database location")
+	dbLocation = flag.String("db", "user=rxlx password=FOO host=192.168.86.120 dbname=tags", "Database location")
 )
 
 type Application struct {
@@ -116,5 +116,8 @@ func (a *Application) AddAccess(access *AccessLog) {
 	a.Memory.Lock()
 	defer a.Memory.Unlock()
 	a.AccessLogs = append(a.AccessLogs, *access)
-	go a.DB.AddAccessLog(access)
+	err := a.DB.AddAccessLog(access)
+	if err != nil {
+		fmt.Println("error adding access log", err)
+	}
 }

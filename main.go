@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -13,5 +14,7 @@ func main() {
 		log.Fatal(err)
 	}
 	app := NewApplication("localhost", db)
-	log.Fatal(http.ListenAndServe(":8080", app.Gateway))
+	sb := SoundBlockIn880Hz(time.Second)
+	sb.PlaySound()
+	log.Fatal(http.ListenAndServe(":8081", app.Gateway))
 }

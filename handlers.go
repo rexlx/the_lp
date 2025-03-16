@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 )
@@ -27,10 +28,13 @@ func (a *Application) AddTagHandler(w http.ResponseWriter, r *http.Request) {
 		tag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
 	}
 	w.WriteHeader(http.StatusCreated)
-	res := make(map[string]string)
-	res["data"] = fmt.Sprintf(out, tag.URL)
+	// res := make(map[string]string)
+	wordString := fmt.Sprintf(out, tag.URL)
+	type Response struct {
+		Data string `json:"data"`
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(Response{Data: wordString})
 }
 
 type TagQuery struct {
@@ -82,6 +86,7 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 			TagID:     tag.ID,
 		})
 		if err := a.DB.UpdateTag(tag); err != nil {
+			log.Println("error updating tag", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
