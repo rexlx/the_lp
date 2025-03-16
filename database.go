@@ -40,6 +40,7 @@ func (p *PostgresDB) createTables() error {
 	_, err := p.Pool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS tags (
 			id TEXT PRIMARY KEY,
+			file_path TEXT,
 			client_id TEXT,
 			hash TEXT,
 			url TEXT,

@@ -39,12 +39,28 @@ func NewTag(id, clientID, hash string, created int) *Tag {
 }
 
 func (t *Tag) AddHistory(clientID, hash string, created int) {
-	t.Memory.Lock()
-	defer t.Memory.Unlock()
+	// t.Memory.Lock()
+	// defer t.Memory.Unlock()
+	if len(t.History) > 149 {
+		t.History = t.History[1:]
+	}
 	t.History = append(t.History, TagHistoryItem{
 		ClientID: clientID,
 		Hash:     hash,
 		Created:  created,
+	})
+}
+
+func (t *Tag) AddAccess(ip, userAgent string, timestamp int) {
+	// t.Memory.Lock()
+	// defer t.Memory.Unlock()
+	if len(t.Access) > 149 {
+		t.Access = t.Access[1:]
+	}
+	t.Access = append(t.Access, TagAccess{
+		IP:        ip,
+		UserAgent: userAgent,
+		Timestamp: timestamp,
 	})
 }
 

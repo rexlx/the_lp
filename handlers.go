@@ -75,13 +75,9 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 		}
 		userAgent := r.Header.Get("User-Agent")
 		// tag.Memory.Lock()
-		tag.Access = append(tag.Access, TagAccess{
-			IP:        remoteIP,
-			UserAgent: userAgent,
-			Timestamp: int(time.Now().Unix()),
-		})
 		// tag.Memory.Unlock()
 		a.Memory.Lock()
+		go tag.AddAccess(remoteIP, userAgent, int(time.Now().Unix()))
 		a.AccessLogs = append(a.AccessLogs, AccessLog{
 			IP:        remoteIP,
 			UserAgent: userAgent,

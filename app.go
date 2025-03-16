@@ -13,12 +13,13 @@ var (
 )
 
 type Application struct {
-	AccessLogs []AccessLog     `json:"access_logs"`
-	Gateway    *http.ServeMux  `json:"-"`
-	FQDN       string          `json:"fqdn"`
-	Tags       map[string]*Tag `json:"tags"`
-	DB         Database        `json:"-"`
-	Memory     *sync.RWMutex   `json:"-"`
+	AccessLogs           []AccessLog     `json:"access_logs"`
+	Gateway              *http.ServeMux  `json:"-"`
+	FQDN                 string          `json:"fqdn"`
+	Tags                 map[string]*Tag `json:"tags"`
+	DB                   Database        `json:"-"`
+	Memory               *sync.RWMutex   `json:"-"`
+	AccessFlushFrequency int             `json:"access_flush_frequency"`
 }
 
 type AccessLog struct {
