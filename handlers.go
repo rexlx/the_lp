@@ -69,22 +69,18 @@ func (a *Application) GetTagHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remoteIP := r.Header.Get("X-Real-IP")
+		remoteIP := r.Header.Get("X-Forwarded-For")
 		if remoteIP == "" {
 			remoteIP = r.RemoteAddr
 		}
 		userAgent := r.Header.Get("User-Agent")
-		// tag.Memory.Lock()
-		// tag.Memory.Unlock()
-		a.Memory.Lock()
 		go tag.AddAccess(remoteIP, userAgent, int(time.Now().Unix()))
-		a.AccessLogs = append(a.AccessLogs, AccessLog{
+		a.AddAccess(&AccessLog{
 			IP:        remoteIP,
 			UserAgent: userAgent,
 			Timestamp: int(time.Now().Unix()),
 			TagID:     tag.ID,
 		})
-		a.Memory.Unlock()
 		if err := a.DB.UpdateTag(tag); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

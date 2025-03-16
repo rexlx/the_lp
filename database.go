@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -13,6 +15,8 @@ type Database interface {
 	GetTags() ([]*Tag, error)
 	UpdateTag(tag *Tag) error
 	DeleteTag(id string) error
+	AddAccessLog(log *AccessLog) error
+	GetAccessLogs(table string) ([]*AccessLog, error)
 }
 
 type PostgresDB struct {
@@ -106,4 +110,42 @@ func (p *PostgresDB) DeleteTag(id string) error {
 		WHERE id = $1
 	`, id)
 	return err
+}
+
+func (p *PostgresDB) AddAccessLog(log *AccessLog) error {
+	currentTime := time.Now()
+	month := currentTime.Format("Jan")
+	month = strings.ToLower(month)
+	year := currentTime.Format("2006")
+	_, err := p.Pool.Exec(context.Background(), `
+		create table if not exists access_logs_%s_%s (
+			id serial primary key,
+			ip text,
+			user_agent text,
+			timestamp int
+		);
+		insert into access_logs_%s_%s (ip, user_agent, timestamp, tag_id)
+		values ($1, $2, $3, $4)
+	`, month, year, month, year, log.IP, log.UserAgent, log.Timestamp, log.TagID)
+	return err
+}
+
+func (p *PostgresDB) GetAccessLogs(table string) ([]*AccessLog, error) {
+	rows, err := p.Pool.Query(context.Background(), `
+		SELECT ip, user_agent, timestamp, tag_id
+		FROM access_logs_%s
+	`, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var logs []*AccessLog
+	for rows.Next() {
+		var log AccessLog
+		if err := rows.Scan(&log.IP, &log.UserAgent, &log.Timestamp, &log.TagID); err != nil {
+			return nil, err
+		}
+		logs = append(logs, &log)
+	}
+	return logs, nil
 }

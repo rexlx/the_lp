@@ -74,7 +74,7 @@ func (a *Application) AddTag(tag *Tag) {
 		if tagFromDB != nil {
 			tag.History = append(tag.History, tagFromDB.History...)
 		}
-		tag.History = append(tag.History, TagHistoryItem{ClientID: tag.ID, Hash: tag.Hash, Created: tag.Created})
+		tag.AddHistory(tag.ClientID, tag.Hash, tag.Created)
 		// store in memory
 		a.Tags[tag.ID] = tag
 		if err := a.DB.InsertTag(tag); err != nil {
@@ -82,7 +82,7 @@ func (a *Application) AddTag(tag *Tag) {
 		}
 		return
 	}
-	myTag.History = append(myTag.History, TagHistoryItem{ClientID: tag.ID, Hash: tag.Hash, Created: tag.Created})
+	myTag.AddHistory(tag.ClientID, tag.Hash, tag.Created)
 	myTag.Hash = tag.Hash
 	myTag.Created = tag.Created
 	if myTag.URL == "" {
@@ -110,4 +110,11 @@ func (a *Application) GetTag(id string) *Tag {
 		return myTag
 	}
 	return myTag
+}
+
+func (a *Application) AddAccess(access *AccessLog) {
+	a.Memory.Lock()
+	defer a.Memory.Unlock()
+	a.AccessLogs = append(a.AccessLogs, *access)
+	go a.DB.AddAccessLog(access)
 }
