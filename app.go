@@ -1,25 +1,41 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
+
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 var (
 	dbLocation = flag.String("db", "user=rxlx password=FOO host=192.168.86.120 dbname=tags", "Database location")
 )
 
+const (
+	Protocol = "heckfire"
+)
+
 type Application struct {
-	AccessLogs           []AccessLog     `json:"access_logs"`
-	Gateway              *http.ServeMux  `json:"-"`
-	FQDN                 string          `json:"fqdn"`
-	Tags                 map[string]*Tag `json:"tags"`
-	DB                   Database        `json:"-"`
-	Memory               *sync.RWMutex   `json:"-"`
-	AccessFlushFrequency int             `json:"access_flush_frequency"`
+	TLSConfig            *tls.Config        `json:"-"`
+	QUICServer           *http3.Server      `json:"-"`
+	UDPListener          *quic.Listener     `json:"-"`
+	Memory               *sync.RWMutex      `json:"-"`
+	Gateway              *http.ServeMux     `json:"-"`
+	FQDN                 string             `json:"fqdn"`
+	AccessFlushFrequency int                `json:"access_flush_frequency"`
+	DB                   Database           `json:"-"`
+	Tags                 map[string]*Tag    `json:"tags"`
+	Clients              map[string]*Client `json:"-"`
+	AccessLogs           []AccessLog        `json:"access_logs"`
+	Broadcast            chan []byte        `json:"-"`
 }
 
 type AccessLog struct {
@@ -55,6 +71,25 @@ func NewApplication(fqdn string, db Database) *Application {
 	app.Gateway.HandleFunc("/tag", app.AddTagHandler)
 	app.Gateway.HandleFunc("/access", app.AccessHandler)
 	return app
+}
+
+func CreateTLSConfig(certPath, keyPath, caCert string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, err
+	}
+	caCertData, err := os.ReadFile(caCert)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCertData)
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientCAs:    caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		NextProtos:   []string{Protocol},
+	}, nil
 }
 
 func (a *Application) AddTag(tag *Tag) {
@@ -119,5 +154,32 @@ func (a *Application) AddAccess(access *AccessLog) {
 	err := a.DB.AddAccessLog(access)
 	if err != nil {
 		fmt.Println("error adding access log", err)
+	}
+}
+
+func (a *Application) handleSession(session quic.Connection) {
+	stream, err := session.AcceptStream(context.Background())
+	if err != nil {
+		fmt.Println("error accepting stream", err)
+		return
+	}
+	client := NewClient(stream, session.RemoteAddr().String())
+	a.Memory.Lock()
+	a.Clients[client.ID] = client
+	a.Memory.Unlock()
+	defer func() {
+		a.Memory.Lock()
+		delete(a.Clients, client.ID)
+		a.Memory.Unlock()
+		stream.Close()
+	}()
+	<-stream.Context().Done()
+}
+
+func (s *Application) broadcastToClients(msg []byte) {
+	s.Memory.RLock()
+	defer s.Memory.RUnlock()
+	for _, client := range s.Clients {
+		client.Stream.Write(msg)
 	}
 }
