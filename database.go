@@ -44,7 +44,8 @@ func NewPostgresDB(dsn string) (*PostgresDB, error) {
 func (p *PostgresDB) createTables() error {
 	_, err := p.Pool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS tags (
-			id TEXT PRIMARY KEY,
+			id UUID PRIMARY KEY,
+			username TEXT,
 			file_path TEXT,
 			client_id TEXT,
 			hash TEXT,
@@ -59,20 +60,23 @@ func (p *PostgresDB) createTables() error {
 
 func (p *PostgresDB) InsertTag(tag *Tag) error {
 	_, err := p.Pool.Exec(context.Background(), `
-        INSERT INTO tags (id, client_id, hash, created, history)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO tags (id, username, file_path, client_id, hash, created, history)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (id) DO NOTHING
-    `, tag.ID, tag.ClientID, tag.Hash, tag.Created, tag.History)
+    `, tag.ID, tag.Username, tag.FilePath, tag.ClientID, tag.Hash, tag.Created, tag.History)
 	return err
 }
 
 func (p *PostgresDB) GetTag(id string) (*Tag, error) {
 	var tag Tag
 	err := p.Pool.QueryRow(context.Background(), `
-		SELECT id, client_id, hash, created, history
+		SELECT id, username, file_path, client_id, hash, created, history
 		FROM tags
 		WHERE id = $1
-	`, id).Scan(&tag.ID, &tag.ClientID, &tag.Hash, &tag.Created, &tag.History)
+	`, id).Scan(&tag.ID, &tag.Username, &tag.FilePath, &tag.ClientID, &tag.Hash, &tag.Created, &tag.History)
+	if err != nil {
+		return nil, err
+	}
 	return &tag, err
 }
 
@@ -88,7 +92,7 @@ func (p *PostgresDB) GetTags() ([]*Tag, error) {
 	var tags []*Tag
 	for rows.Next() {
 		var tag Tag
-		if err := rows.Scan(&tag.ID, &tag.ClientID, &tag.Hash, &tag.Created, &tag.History); err != nil {
+		if err := rows.Scan(&tag.ID, &tag.Username, &tag.FilePath, &tag.ClientID, &tag.Hash, &tag.Created, &tag.History); err != nil {
 			return nil, err
 		}
 		tags = append(tags, &tag)
@@ -99,9 +103,9 @@ func (p *PostgresDB) GetTags() ([]*Tag, error) {
 func (p *PostgresDB) UpdateTag(tag *Tag) error {
 	_, err := p.Pool.Exec(context.Background(), `
 		UPDATE tags
-		SET client_id = $2, hash = $3, created = $4, history = $5
+		SET client_id = $2, hash = $3, created = $4, history = $5, username = $6, file_path = $7
 		WHERE id = $1
-	`, tag.ID, tag.ClientID, tag.Hash, tag.Created, tag.History)
+	`, tag.ID, tag.ClientID, tag.Hash, tag.Created, tag.History, tag.Username, tag.FilePath)
 	return err
 }
 

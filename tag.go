@@ -6,6 +6,7 @@ import (
 )
 
 type Tag struct {
+	Username string           `json:"username"`
 	FilePath string           `json:"file_path"`
 	ID       string           `json:"id"`
 	ClientID string           `json:"client_id"`

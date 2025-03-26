@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	app := NewApplication("localhost", db)
+	app := NewApplication("http://localhost:8081", db)
 	sb := SoundBlockIn880Hz(time.Second)
 	sb.PlaySound()
 	log.Fatal(http.ListenAndServe(":8081", app.Gateway))
