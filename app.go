@@ -4,15 +4,17 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
 )
 
 var (
@@ -25,7 +27,6 @@ const (
 
 type Application struct {
 	TLSConfig            *tls.Config        `json:"-"`
-	QUICServer           *http3.Server      `json:"-"`
 	UDPListener          *quic.Listener     `json:"-"`
 	Memory               *sync.RWMutex      `json:"-"`
 	Gateway              *http.ServeMux     `json:"-"`
@@ -90,6 +91,102 @@ func CreateTLSConfig(certPath, keyPath, caCert string) (*tls.Config, error) {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		NextProtos:   []string{Protocol},
 	}, nil
+}
+
+const udpAddr = "localhost:4242"
+
+func (a *Application) receiveDataOverQUIC() {
+	fmt.Println("Starting QUIC server")
+	cfg := createTLSConfig()
+	serverAddr, err := net.ResolveUDPAddr("udp", udpAddr)
+	if err != nil {
+		panic(err)
+	}
+	server, err := net.ListenUDP("udp", serverAddr)
+	if err != nil {
+		panic(err)
+	}
+	defer server.Close()
+
+	listener, err := quic.Listen(server, cfg, nil)
+	if err != nil {
+		panic(err)
+	}
+	defer listener.Close()
+	fmt.Println("Listening for QUIC connections")
+	for {
+		sess, err := listener.Accept(context.Background())
+		fmt.Println("Accepted connection")
+		if err != nil {
+			panic(err)
+		}
+		go a.readFromQUIC(sess)
+	}
+
+}
+
+func (a *Application) readFromQUIC(sess quic.Connection) {
+	fmt.Println("Accepting stream...")
+	// create a context with not timout
+	ctx := context.Background()
+	stream, err := sess.AcceptStream(ctx)
+	if err != nil {
+		panic(err)
+	}
+	defer stream.Close()
+	fmt.Println("Accepted stream")
+	buf := make([]byte, 1024)
+	for {
+		var qr Notification
+		n, err := stream.Read(buf)
+		if err != nil {
+			if err.Error() == "EOF" {
+				fmt.Println("readFromQUIC: Client closed connection")
+				break
+			}
+			fmt.Println("readFromQUIC: Error reading from stream", err)
+			break
+		}
+		err = json.Unmarshal(buf[:n], &qr)
+		if err != nil {
+			if strings.Contains(string(buf[:n]), "|beat|") {
+				continue
+			}
+			fmt.Println("readFromQUIC: Error unmarshalling", err)
+			// continue
+		}
+		if qr.ID != "" {
+			newCLient := Client{
+				ID:   qr.ID,
+				Addr: sess.RemoteAddr().String(),
+			}
+			a.Memory.Lock()
+			a.Clients[qr.ID] = &newCLient
+			a.Memory.Unlock()
+			fmt.Println("Client connected", qr.ID)
+		}
+	}
+}
+
+func createTLSConfig() *tls.Config {
+	// Load client cert
+	cert, err := tls.LoadX509KeyPair("/Users/rxlx/bin/data/server.crt", "/Users/rxlx/bin/data/server.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Load CA cert
+	caCert, err := os.ReadFile("/Users/rxlx/bin/data/ca.crt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	// Setup HTTPS client
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		NextProtos:   []string{"rider-protocol"},
+	}
 }
 
 func (a *Application) AddTag(tag *Tag) {

@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type Notification struct {
+	ID   string `json:"id"`
+	Info string `json:"info"`
+	Time string `json:"time"`
+}
+
 type SoundBlock struct {
 	Duration   time.Duration `json:"duration"`
 	Frequency  float64       `json:"frequency"`

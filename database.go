@@ -82,7 +82,7 @@ func (p *PostgresDB) GetTag(id string) (*Tag, error) {
 
 func (p *PostgresDB) GetTags() ([]*Tag, error) {
 	rows, err := p.Pool.Query(context.Background(), `
-		SELECT id, client_id, hash, created, history
+		SELECT id, username, file_path, client_id, hash, created, history
 		FROM tags
 	`)
 	if err != nil {
