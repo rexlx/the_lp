@@ -71,6 +71,8 @@ func NewApplication(fqdn string, db Database) *Application {
 	app.Gateway.HandleFunc("/get-tag", app.GetTagHandler)
 	app.Gateway.HandleFunc("/tag", app.AddTagHandler)
 	app.Gateway.HandleFunc("/access", app.AccessHandler)
+	app.Gateway.HandleFunc("/upload", app.UploadFileHandler)
+	app.Gateway.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 	return app
 }
 
