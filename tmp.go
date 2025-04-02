@@ -52,7 +52,7 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 		modifiedFilename := filepath.Base(filename)
 		modifiedFilenameWithoutExt := modifiedFilename[:len(modifiedFilename)-len(filepath.Ext(modifiedFilename))]
 		modifiedFilename = modifiedFilenameWithoutExt + "_new.pdf"
-		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("./static/%s", filename))
+		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("./static/%s", filename), uid)
 		if err != nil {
 			fmt.Println("Error running script:", err)
 		}
@@ -78,6 +78,12 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Error writing file to response", http.StatusInternalServerError)
 			return
 		}
+		a.Gateway.Handle(fmt.Sprintf("/%v", uid), a.tagHandler(&Tag{
+			ID:      uid,
+			URL:     fmt.Sprintf("%s/%s", a.FQDN, uid),
+			History: []TagHistoryItem{},
+			Access:  []TagAccess{},
+		}))
 		os.Remove(fmt.Sprintf("./static/%s", filename))
 		os.Remove(fmt.Sprintf("./static/%s", modifiedFilename))
 		fmt.Println("Removed files:", filename, modifiedFilename)
