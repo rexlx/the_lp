@@ -22,15 +22,16 @@ def add_url_action(pdf_path, output_path, page_number, x, y, width, height, url)
         pdf.save(output_path)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <input_pdf_path>")
+    if len(sys.argv) != 3:  # Expecting 3 arguments now
+        print("Usage: python script.py <input_pdf_path> <uuid>")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
+    uuid = sys.argv[2] # get the second argument.
     output_path = os.path.splitext(pdf_path)[0] + "_new.pdf"
     page_number = 0  # Page index (0-based)
     x, y, width, height = 100, 700, 200, 50  # Coordinates and size of the clickable area
-    url = "http://fairlady:8081/okay"
+    url = "http://fairlady:8081/" + uuid # append the uuid to the url
 
     add_url_action(pdf_path, output_path, page_number, x, y, width, height, url)
     print(f"Modified PDF saved to: {output_path}")
