@@ -44,7 +44,45 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 		uid := uuid.New().String()
 		UploadResponse.ID = uid
 		UploadResponse.Status = "complete"
-		go a.WriteToDisk(fmt.Sprintf("./static/%s", filename), fileData.Bytes())
+		// go func() {
+		err := a.WriteToDisk(fmt.Sprintf("./static/%s", filename), fileData.Bytes())
+		if err != nil {
+			fmt.Println("Error writing to disk:", err)
+		}
+		modifiedFilename := filepath.Base(filename)
+		modifiedFilenameWithoutExt := modifiedFilename[:len(modifiedFilename)-len(filepath.Ext(modifiedFilename))]
+		modifiedFilename = modifiedFilenameWithoutExt + "_new.pdf"
+		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("./static/%s", filename))
+		if err != nil {
+			fmt.Println("Error running script:", err)
+		}
+		modifiedFilePath := fmt.Sprintf("./static/%s", modifiedFilename)
+		modifiedFile, err := os.Open(modifiedFilePath)
+		if err != nil {
+			fmt.Println("Error opening modified file:", err)
+			return
+		}
+		defer modifiedFile.Close()
+		fileInfo, err := modifiedFile.Stat()
+		if err != nil {
+			http.Error(w, "Error getting file info", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Disposition", "attachment; filename="+modifiedFilename)
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+		w.WriteHeader(http.StatusOK)
+		_, err = io.Copy(w, modifiedFile)
+		if err != nil {
+			http.Error(w, "Error writing file to response", http.StatusInternalServerError)
+			return
+		}
+		os.Remove(fmt.Sprintf("./static/%s", filename))
+		os.Remove(fmt.Sprintf("./static/%s", modifiedFilename))
+		fmt.Println("Removed files:", filename, modifiedFilename)
+		fmt.Println("File written successfully:", filename)
+		// }()
 
 	}
 	out, err := json.Marshal(UploadResponse)

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -281,4 +282,18 @@ func (s *Application) broadcastToClients(msg []byte) {
 	for _, client := range s.Clients {
 		client.Stream.Write(msg)
 	}
+}
+
+func RunBashScript(scriptPath string, args ...string) error {
+	cmd := exec.Command(scriptPath, args...)
+
+	// Capture stdout and stderr
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running script: %v, output: %s", err, output)
+	}
+
+	fmt.Printf("Script output:\n%s", output) // Print the script's output.
+
+	return nil
 }
