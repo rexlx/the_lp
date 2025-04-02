@@ -14,6 +14,7 @@ python3 -m pikepdf --version
 
 # Extract the filename from the path
 filename=$(basename "$1")
+uuid="$2"
 
-python3 add.py "../static/$filename" #or just $filename depending on your python script location
+python3 add.py "./static/$filename" "$uuid"
 echo "Python script executed successfully."

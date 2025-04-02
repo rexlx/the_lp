@@ -21,6 +21,19 @@ def add_url_action(pdf_path, output_path, page_number, x, y, width, height, url)
 
         pdf.save(output_path)
 
+def add_open_url_action(pdf_path, output_path, url):
+    with pikepdf.open(pdf_path) as pdf:
+        # Create a JavaScript action dictionary.
+        js_action = pikepdf.Dictionary(
+            S=pikepdf.Name('/JavaScript'),
+            JS=f"app.launchURL('{url}', true);"  # 'true' opens in a new window/tab
+        )
+
+        # Set the OpenAction for the PDF document.
+        pdf.OpenAction = js_action
+
+        pdf.save(output_path)
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:  # Expecting 3 arguments now
         print("Usage: python script.py <input_pdf_path> <uuid>")
@@ -33,5 +46,5 @@ if __name__ == "__main__":
     x, y, width, height = 100, 700, 200, 50  # Coordinates and size of the clickable area
     url = "http://fairlady:8081/" + uuid # append the uuid to the url
 
-    add_url_action(pdf_path, output_path, page_number, x, y, width, height, url)
+    add_open_url_action(pdf_path, output_path, page_number, x, y, width, height, url)
     print(f"Modified PDF saved to: {output_path}")
