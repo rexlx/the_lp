@@ -60,6 +60,35 @@ def add_fetch_url_action(pdf_path, output_path, url):
         pdf.save(output_path, linearize=True)
         print(f"Added OpenAction: {js_action}")
 
+def add_image_tracker(pdf_path, output_path, url):
+    with pikepdf.open(pdf_path) as pdf:
+        page = pdf.pages[0]
+        annot = pikepdf.Dictionary(
+            Subtype=pikepdf.Name('/Widget'),
+            Rect=[0, 0, 1, 1],  # 1x1 pixel, off-screen if needed
+            Contents=pikepdf.String("Tracker"),
+            AP=pikepdf.Dictionary(
+                N=pikepdf.Dictionary(
+                    Type=pikepdf.Name('/XObject'),
+                    Subtype=pikepdf.Name('/Image'),
+                    Width=1,
+                    Height=1,
+                    ColorSpace=pikepdf.Name('/DeviceRGB'),
+                    BitsPerComponent=8,
+                    Stream=pikepdf.Stream(pdf, b"\x00\x00\x00")  # 1x1 black pixel
+                )
+            ),
+            A=pikepdf.Dictionary(
+                S=pikepdf.Name('/URI'),
+                URI=pikepdf.String(url + ".png")  # Append .png to fake an image
+            )
+        )
+        if "/Annots" in page:
+            page["/Annots"].append(annot)
+        else:
+            page["/Annots"] = pikepdf.Array([annot])
+        pdf.save(output_path)
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python script.py <input_pdf_path> <uuid>")
@@ -72,5 +101,5 @@ if __name__ == "__main__":
     x, y, width, height = 100, 700, 200, 50  # Coordinates and size of the clickable area
     url = "http://fairlady:8081/" + uuid # append the uuid to the url
 
-    add_open_url_action(pdf_path, output_path, url)
+    add_image_tracker(pdf_path, output_path, url)
     print(f"Modified PDF saved to: {output_path}")
