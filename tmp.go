@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -78,7 +80,13 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Error writing file to response", http.StatusInternalServerError)
 			return
 		}
+		hash, err := CalculateSHA256(fmt.Sprintf("./static/%s", modifiedFilePath))
+		if err != nil {
+			fmt.Println("Error calculating SHA256:", err)
+			return
+		}
 		a.Gateway.Handle(fmt.Sprintf("/%v", uid), a.tagHandler(&Tag{
+			Hash:    hash,
 			ID:      uid,
 			URL:     fmt.Sprintf("%s/%s", a.FQDN, uid),
 			History: []TagHistoryItem{},
@@ -97,6 +105,21 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Write(out)
+}
+
+func CalculateSHA256(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func (a *Application) WriteToDisk(filename string, data []byte) error {

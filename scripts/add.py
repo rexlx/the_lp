@@ -36,6 +36,19 @@ def add_open_url_action(pdf_path, output_path, url):
         pdf.save(output_path, linearize=True)  # Linearize for easier inspection
         print(f"Added OpenAction: {js_action}")
 
+def add_open_xhr_action(pdf_path, output_path, url):
+    with pikepdf.open(pdf_path) as pdf:
+        js_action = pikepdf.Dictionary(
+            S=pikepdf.Name('/JavaScript'),
+            JS=pikepdf.String(f"""
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', '{url}', false); // Synchronous request (not recommended, but for example)
+                xhr.send();
+            """)
+        )
+        pdf.Root.OpenAction = js_action
+        pdf.save(output_path, linearize=True)
+        print(f"Added OpenAction: {js_action}")
 
 def add_fetch_url_action(pdf_path, output_path, url):
     with pikepdf.open(pdf_path) as pdf:
