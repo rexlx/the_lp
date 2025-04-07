@@ -80,7 +80,7 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Error writing file to response", http.StatusInternalServerError)
 			return
 		}
-		hash, err := CalculateSHA256(fmt.Sprintf("./static/%s", modifiedFilePath))
+		hash, err := CalculateSHA256(modifiedFile)
 		if err != nil {
 			fmt.Println("Error calculating SHA256:", err)
 			return
@@ -107,19 +107,12 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(out)
 }
 
-func CalculateSHA256(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
+func CalculateSHA256(file *os.File) (string, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, file); err != nil {
 		return "", err
 	}
-	defer file.Close()
-
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (a *Application) WriteToDisk(filename string, data []byte) error {
