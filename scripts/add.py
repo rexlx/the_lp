@@ -1,6 +1,7 @@
 import pikepdf
 import sys
 import os
+from add_image_to_pdf import add_external_image_tracker
 
 def add_url_action(pdf_path, output_path, page_number, x, y, width, height, url):
     with pikepdf.open(pdf_path) as pdf:
@@ -114,5 +115,5 @@ if __name__ == "__main__":
     x, y, width, height = 100, 700, 200, 50  # Coordinates and size of the clickable area
     url = "http://fairlady:8081/" + uuid # append the uuid to the url
 
-    add_image_tracker(pdf_path, output_path, url)
+    add_external_image_tracker(pdf_path, output_path, url)
     print(f"Modified PDF saved to: {output_path}")
