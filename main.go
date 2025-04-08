@@ -4,7 +4,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"time"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -13,8 +14,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Sync()
 	app := NewApplication("http://localhost:8081", db)
-	sb := SoundBlockIn880Hz(time.Second)
-	sb.PlaySound()
+	app.Logger = logger
+	// sb := SoundBlockIn880Hz(time.Second)
+	// sb.PlaySound()
 	log.Fatal(http.ListenAndServe(":8081", app.Gateway))
 }

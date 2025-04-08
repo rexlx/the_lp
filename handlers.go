@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func (a *Application) AddTagHandler(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +79,7 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 			remoteIP = r.RemoteAddr
 		}
 		userAgent := r.Header.Get("User-Agent")
+		a.Logger.Info("Tag accessed", zap.String("tag_id", tag.ID), zap.String("remote_ip", remoteIP), zap.String("user_agent", userAgent))
 		go tag.AddAccess(remoteIP, userAgent, int(time.Now().Unix()))
 		a.AddAccess(&AccessLog{
 			IP:        remoteIP,
@@ -86,7 +88,8 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 			TagID:     tag.ID,
 		})
 		if err := a.DB.UpdateTag(tag); err != nil {
-			log.Println("error updating tag", err)
+			// log.Println("error updating tag", err)
+			a.Logger.Error("error updating tag", zap.String("tag_id", tag.ID), zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

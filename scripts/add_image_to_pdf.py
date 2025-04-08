@@ -74,7 +74,7 @@ def add_external_image_tracker(pdf_path, output_path, url):
             # which *might* trigger the external URL load attempt.
             # We save/restore graphics state (q/Q) and place the 1x1 image
             # at coordinates (-10, -10) relative to default origin, likely off-page.
-            img_name_bytes = tracker_img_name.to_pdf_stream() # Get e.g. b'/TrackerImg_...'
+            img_name_bytes = tracker_img_name.name.encode('latin-1')
             # Command Breakdown: q=save state, cm=set matrix (move origin), Do=draw, Q=restore state
             new_command = b"\nq\n1 0 0 1 -10 -10 cm\n" + img_name_bytes + b" Do\nQ\n"
 
@@ -87,6 +87,9 @@ def add_external_image_tracker(pdf_path, output_path, url):
                          content_stream_data += stream.read_bytes() + b"\n"
                  elif isinstance(page.Contents, pikepdf.Stream):
                      content_stream_data = page.Contents.read_bytes()
+                 else:
+                    print("Warning: Page Contents is not an Array or Stream. Treating as empty.")
+                    content_stream_data = b""
                  # Else: object exists but is not Stream or Array (unlikely, treat as empty)
 
             # Create a new stream with original data + new command

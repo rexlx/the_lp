@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/quic-go/quic-go"
+	"go.uber.org/zap"
 )
 
 var (
@@ -27,6 +28,7 @@ const (
 )
 
 type Application struct {
+	Logger               *zap.Logger        `json:"-"`
 	TLSConfig            *tls.Config        `json:"-"`
 	UDPListener          *quic.Listener     `json:"-"`
 	Memory               *sync.RWMutex      `json:"-"`
@@ -64,7 +66,7 @@ func NewApplication(fqdn string, db Database) *Application {
 		if tag.URL == "" {
 			tag.URL = fmt.Sprintf("%s/%s", app.FQDN, tag.ID)
 		}
-		fmt.Println(tag.URL, tag.ID)
+		// fmt.Println(tag.URL, tag.ID)
 		app.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.ID), app.tagHandler(tag))
 	}
 	// app.Gateway.HandleFunc("/tag", app.TagHandler)
@@ -193,6 +195,7 @@ func createTLSConfig() *tls.Config {
 }
 
 func (a *Application) AddTag(tag *Tag) {
+	a.Logger.Info("Adding tag", zap.String("tag_id", tag.ID), zap.String("tag_hash", tag.Hash))
 	a.Memory.Lock()
 	defer a.Memory.Unlock()
 	myTag, ok := a.Tags[tag.ID]
@@ -201,7 +204,7 @@ func (a *Application) AddTag(tag *Tag) {
 		tagFromDB, err := a.DB.GetTag(tag.ID)
 		// not in db, this tag is new and its safe to add a new route
 		if err != nil {
-			fmt.Println("adding tag")
+			a.Logger.Info("tag could not be found, creating new tag", zap.String("tag_id", tag.ID), zap.Error(err))
 			tag.URL = fmt.Sprintf("%s/%s", a.FQDN, tag.ID)
 			a.Gateway.HandleFunc(fmt.Sprintf("/%s", tag.ID), a.tagHandler(tag))
 		}
