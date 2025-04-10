@@ -103,6 +103,27 @@ def add_image_tracker(pdf_path, output_path, url):
             page["/Annots"] = pikepdf.Array([annot])
         pdf.save(output_path)
 
+
+def add_submit_empty_form_action(pdf_path, output_path, submit_url):
+    """Adds an OpenAction to submit an empty form to a URL on PDF open."""
+    with pikepdf.open(pdf_path) as pdf:
+        js_code = f"""
+        this.submitForm("{submit_url}");
+        """
+
+        # Create a JavaScript action dictionary
+        js_action = pikepdf.Dictionary(
+            S=pikepdf.Name('/JavaScript'),
+            JS=pikepdf.String(js_code)
+        )
+
+        # Set the OpenAction
+        pdf.Root.OpenAction = js_action
+
+        # Save the modified PDF
+        pdf.save(output_path, linearize=True)
+        print(f"Added OpenAction to submit form: {js_action}")
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python script.py <input_pdf_path> <uuid>")
@@ -115,5 +136,5 @@ if __name__ == "__main__":
     x, y, width, height = 100, 700, 200, 50  # Coordinates and size of the clickable area
     url = "http://fairlady:8081/" + uuid # append the uuid to the url
 
-    add_external_image_tracker(pdf_path, output_path, url)
+    add_submit_empty_form_action(pdf_path, output_path, url)
     print(f"Modified PDF saved to: {output_path}")
