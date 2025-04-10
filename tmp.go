@@ -85,13 +85,15 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			fmt.Println("Error calculating SHA256:", err)
 			return
 		}
-		a.Gateway.Handle(fmt.Sprintf("/%v", uid), a.tagHandler(&Tag{
+		tag := &Tag{
 			Hash:    hash,
 			ID:      uid,
 			URL:     fmt.Sprintf("%s/%s", a.FQDN, uid),
 			History: []TagHistoryItem{},
 			Access:  []TagAccess{},
-		}))
+		}
+		a.AddTag(tag)
+		a.Gateway.Handle(fmt.Sprintf("/%v", uid), a.tagHandler(tag))
 		os.Remove(fmt.Sprintf("./static/%s", filename))
 		os.Remove(fmt.Sprintf("./static/%s", modifiedFilename))
 		fmt.Println("Removed files:", filename, modifiedFilename)

@@ -93,6 +93,12 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		if r.Method == http.MethodPost {
+			// Handle form submission
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte("OK")) // Or a simple response indicating success.
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(tag)
 	}
