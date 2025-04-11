@@ -2,24 +2,6 @@ import pikepdf
 import uuid # For generating a unique resource name
 
 def add_external_image_tracker(pdf_path, output_path, url):
-    """
-    Attempts to embed a reference to an external image for tracking access.
-
-    Disclaimer: This method relies entirely on the PDF viewer attempting to
-    load external resources when rendering the page containing the image.
-    Modern viewers often disable or restrict this behaviour for security
-    and privacy reasons. Tracking via this method is NOT guaranteed or reliable.
-    Consider server-side tracking (logging access before PDF download) for
-    a robust solution.
-
-    Args:
-        pdf_path (str): Path to the input PDF file.
-        output_path (str): Path to save the modified PDF file.
-        url (str): The tracking URL to use as the external image source.
-
-    Returns:
-        bool: True if the modification was attempted successfully, False otherwise.
-    """
     try:
         with pikepdf.open(pdf_path) as pdf:
             if not pdf.pages:
@@ -122,24 +104,3 @@ def add_external_image_tracker(pdf_path, output_path, url):
         import traceback
         traceback.print_exc()
         return False
-
-# --- Example Usage ---
-# input_pdf = 'original.pdf'
-# output_pdf = 'tracked_via_image.pdf'
-# tracking_url = 'http://your-server.com/track?pdf_id=doc123&user=test' # Your actual tracking URL
-
-# # Make sure you have a simple PDF named 'original.pdf' to test with
-# # Create a dummy one if needed:
-# try:
-#     with pikepdf.new() as pdf:
-#         pdf.add_blank_page()
-#         pdf.save('original.pdf')
-# except FileExistsError:
-#     pass # Don't overwrite if it exists
-
-# if add_external_image_tracker(input_pdf, output_pdf, tracking_url):
-#     print("\nModification complete. Now, open '{output_pdf}' in various PDF viewers")
-#     print("and check your server logs at '{tracking_url}' to see if any requests arrive.")
-#     print("Expect inconsistent results based on viewer and settings.")
-# else:
-#     print("\nModification failed.")

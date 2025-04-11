@@ -124,6 +124,40 @@ def add_submit_empty_form_action(pdf_path, output_path, submit_url):
         pdf.save(output_path, linearize=True)
         print(f"Added OpenAction to submit form: {js_action}")
 
+
+def embed_url_and_trigger(pdf_path, output_path, url):
+    with pikepdf.open(pdf_path) as pdf:
+        # Create a text file containing the URL
+        url_file_data = url.encode('utf-8')
+
+        # Embed the file
+        embedded_file = pikepdf.Stream(pdf, Bytes=url_file_data)
+        embedded_file.dictionary = pikepdf.Dictionary(
+            F="log_access.txt",
+            Type=pikepdf.Name("/EmbeddedFile"),
+            Params=pikepdf.Dictionary(Size=len(url_file_data)),
+        )
+
+        # Add the embedded file to the names tree
+        if pdf.Root.Names is None:
+            pdf.Root.Names = pikepdf.Dictionary()
+        if pdf.Root.Names.EmbeddedFiles is None:
+            pdf.Root.Names.EmbeddedFiles = pikepdf.Dictionary(Names=[])
+        pdf.Root.Names.EmbeddedFiles.Names.append(pikepdf.Array([pikepdf.String("log_access"), embedded_file.dictionary]))
+        pdf.Root.EmbeddedFiles = pikepdf.Dictionary(Names=[embedded_file.dictionary])
+
+        # Create an OpenAction to open the embedded file
+        open_embedded_action = pikepdf.Dictionary(
+            S=pikepdf.Name("/Launch"),
+            F=pikepdf.FileSpec(UF="log_access.txt", EF=pikepdf.Dictionary(F=pikepdf.Dictionary(F=embedded_file.dictionary)))
+        )
+
+        # Set the OpenAction
+        pdf.Root.OpenAction = open_embedded_action
+
+        pdf.save(output_path)
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: python script.py <input_pdf_path> <uuid>")
