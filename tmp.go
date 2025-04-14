@@ -24,12 +24,14 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 	var fileData bytes.Buffer
 	var UploadResponse uploadResponse
 	UploadResponse.Status = "incomplete"
+
 	// Copy the request body (file data) to the buffer
 	_, err := io.Copy(&fileData, r.Body)
 	if err != nil {
 		http.Error(w, "Error reading file data", http.StatusInternalServerError)
 		return
 	}
+
 	chunkSize := r.ContentLength
 	filename := r.Header.Get("X-filename")
 	filename = filepath.Base(filename)
@@ -46,45 +48,37 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 		uid := uuid.New().String()
 		UploadResponse.ID = uid
 		UploadResponse.Status = "complete"
-		// go func() {
+
 		err := a.WriteToDisk(fmt.Sprintf("./static/%s", filename), fileData.Bytes())
 		if err != nil {
 			fmt.Println("Error writing to disk:", err)
+			return // Or handle error appropriately
 		}
+
 		modifiedFilename := filepath.Base(filename)
 		modifiedFilenameWithoutExt := modifiedFilename[:len(modifiedFilename)-len(filepath.Ext(modifiedFilename))]
 		modifiedFilename = modifiedFilenameWithoutExt + "_new.pdf"
+
 		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("./static/%s", filename), uid)
 		if err != nil {
 			fmt.Println("Error running script:", err)
+			return // Or handle error appropriately
 		}
+
 		modifiedFilePath := fmt.Sprintf("./static/%s", modifiedFilename)
 		modifiedFile, err := os.Open(modifiedFilePath)
 		if err != nil {
 			fmt.Println("Error opening modified file:", err)
-			return
+			return // Or handle error appropriately
 		}
 		defer modifiedFile.Close()
-		fileInfo, err := modifiedFile.Stat()
-		if err != nil {
-			http.Error(w, "Error getting file info", http.StatusInternalServerError)
-			return
-		}
 
-		w.Header().Set("Content-Disposition", "attachment; filename="+modifiedFilename)
-		w.Header().Set("Content-Type", "application/pdf")
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
-		w.WriteHeader(http.StatusOK)
-		_, err = io.Copy(w, modifiedFile)
-		if err != nil {
-			http.Error(w, "Error writing file to response", http.StatusInternalServerError)
-			return
-		}
 		hash, err := CalculateSHA256(modifiedFile)
 		if err != nil {
 			fmt.Println("Error calculating SHA256:", err)
-			return
+			return // Or handle error appropriately
 		}
+
 		tag := &Tag{
 			Hash:    hash,
 			ID:      uid,
@@ -93,20 +87,18 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			Access:  []TagAccess{},
 		}
 		a.AddTag(tag)
-		a.Gateway.Handle(fmt.Sprintf("/%v", uid), a.tagHandler(tag))
-		os.Remove(fmt.Sprintf("./static/%s", filename))
-		os.Remove(fmt.Sprintf("./static/%s", modifiedFilename))
+
 		fmt.Println("Removed files:", filename, modifiedFilename)
 		fmt.Println("File written successfully:", filename)
-		// }()
-
 	}
 	out, err := json.Marshal(UploadResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error marshalling response", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(out)
+
 }
 
 func CalculateSHA256(file *os.File) (string, error) {
