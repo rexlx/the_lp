@@ -95,8 +95,7 @@ func (a *Application) tagHandler(tag *Tag) http.HandlerFunc {
 		}
 		if r.Method == http.MethodPost {
 			// Handle form submission
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte("OK")) // Or a simple response indicating success.
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

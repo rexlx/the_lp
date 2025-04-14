@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -37,7 +38,19 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 	filename = filepath.Base(filename)
 
 	lastChunk := r.Header.Get("X-last-chunk")
-	fmt.Println(chunkSize, filename, lastChunk)
+	uid := r.Header.Get("X-id")
+	tag := a.GetTag(uid)
+	if tag != nil {
+		if uid == "" {
+			uid = uuid.New().String()
+		}
+		tag = &Tag{
+			ID:      uid,
+			URL:     fmt.Sprintf("%s/%s", a.FQDN, uid),
+			History: []TagHistoryItem{},
+			Access:  []TagAccess{},
+		}
+	}
 
 	if lastChunk == "true" {
 		fmt.Println("last chunk", chunkSize, filename)
@@ -45,7 +58,6 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if complete {
-		uid := uuid.New().String()
 		UploadResponse.ID = uid
 		UploadResponse.Status = "complete"
 
@@ -78,14 +90,9 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			fmt.Println("Error calculating SHA256:", err)
 			return // Or handle error appropriately
 		}
+		tag.Hash = hash
+		tag.Created = int(time.Now().Unix())
 
-		tag := &Tag{
-			Hash:    hash,
-			ID:      uid,
-			URL:     fmt.Sprintf("%s/%s", a.FQDN, uid),
-			History: []TagHistoryItem{},
-			Access:  []TagAccess{},
-		}
 		a.AddTag(tag)
 
 		fmt.Println("Removed files:", filename, modifiedFilename)
