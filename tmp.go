@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -40,8 +39,9 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 	lastChunk := r.Header.Get("X-last-chunk")
 	uid := r.Header.Get("X-id")
 	tag := a.GetTag(uid)
-	if tag != nil {
+	if tag == nil {
 		if uid == "" {
+			fmt.Println("Generating new UUID...")
 			uid = uuid.New().String()
 		}
 		tag = &Tag{
@@ -51,7 +51,6 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			Access:  []TagAccess{},
 		}
 	}
-
 	if lastChunk == "true" {
 		fmt.Println("last chunk", chunkSize, filename)
 		complete = true
@@ -71,7 +70,7 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 		modifiedFilenameWithoutExt := modifiedFilename[:len(modifiedFilename)-len(filepath.Ext(modifiedFilename))]
 		modifiedFilename = modifiedFilenameWithoutExt + "_new.pdf"
 
-		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("./static/%s", filename), uid)
+		err = RunBashScript("./scripts/call_add_py.sh", fmt.Sprintf("../static/%s", filename), uid)
 		if err != nil {
 			fmt.Println("Error running script:", err)
 			return // Or handle error appropriately
@@ -91,7 +90,7 @@ func (a *Application) UploadFileHandler(w http.ResponseWriter, r *http.Request) 
 			return // Or handle error appropriately
 		}
 		tag.Hash = hash
-		tag.Created = int(time.Now().Unix())
+		// tag.Created = int(time.Now().Unix())
 
 		a.AddTag(tag)
 
